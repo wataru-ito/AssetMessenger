@@ -300,8 +300,7 @@ namespace AssetMessageService
 				case EventType.MouseDown:
 					if (itemPosition.Contains(e.mousePosition) && e.button == 0)
 					{
-						var win = EditorWindow.focusedWindow; // MouseDownが来てるってことはfocusedWindowはここ
-						AssetMessageBoard.Open(guid, msg, e.mousePosition + win.position.position);
+						AssetMessageBoard.Open(guid, msg, GUIUtility.GUIToScreenPoint(e.mousePosition));
 						e.Use();
 					}
 					break;

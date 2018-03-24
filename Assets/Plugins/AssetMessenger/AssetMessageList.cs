@@ -104,7 +104,7 @@ namespace AssetMessageService
 				case EventType.MouseDown:
 					if (icon.Contains(e.mousePosition) && e.button == 0)
 					{
-						AssetMessageBoard.Open(data.message.guid, data.message, position.position + e.mousePosition);
+						AssetMessageBoard.Open(data.message.guid, data.message, GUIUtility.GUIToScreenPoint(e.mousePosition));
 						e.Use();
 					}
 					break;

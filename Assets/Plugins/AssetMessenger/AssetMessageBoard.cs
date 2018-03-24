@@ -50,7 +50,7 @@ namespace AssetMessageService
 
 		void OnGUI()
 		{
-			EditorGUILayout.HelpBox(m_message.message, m_message.type);
+			EditorGUILayout.HelpBox(m_message.message, m_message.type, true);
 			if (!string.IsNullOrEmpty(m_message.source))
 			{
 				GUILayout.FlexibleSpace();
