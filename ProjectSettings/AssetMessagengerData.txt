@@ -1,1 +1,1 @@
-{"messages":[{"guid":"708ee7a0b051b4c1ab6ae68f0e65e026","message":"TEST","messageType":2}]}
+{"messages":[{"guid":"630ebfd849d00e14ca2ee67eeeaaac40","message":"名前は tex_ から始まる事","type":3,"source":"MaterialImporter"}]}

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEditor;
 
 namespace AssetMessageService
@@ -10,7 +12,7 @@ namespace AssetMessageService
 	{
 		public string message;
 		public MessageType type;
-		public MonoScript source;
+		public string source;
 	}
 
 	public static class AssetMessenger
@@ -20,6 +22,8 @@ namespace AssetMessageService
 
 		static bool m_editing;
 		static bool m_dirty;
+
+		static AssetMessageList m_listWindow;
 
 
 		//------------------------------------------------------
@@ -37,6 +41,12 @@ namespace AssetMessageService
 
 			m_editing = false;
 			m_messageMap = AssetMessageSaveData.Load();
+
+			m_listWindow = Resources.FindObjectsOfTypeAll<AssetMessageList>().FirstOrDefault();
+			if (m_listWindow)
+			{
+				m_listWindow.Init(m_messageMap);
+			}
 
 			EditorApplication.projectWindowItemOnGUI += OnGUI;
 		}
@@ -96,90 +106,163 @@ namespace AssetMessageService
 		// accessor
 		//------------------------------------------------------
 
-		public static void Clear(string guid)
+		static string GetGUID(UnityEngine.Object assetObject)
 		{
-			if (m_messageMap.Remove(guid))
+			var assetPath = AssetDatabase.GetAssetPath(assetObject);
+			if (string.IsNullOrEmpty(assetPath))
 			{
-				Save();
+				Debug.LogWarning(assetObject.ToString() + "dont asset");
+				return null;
+			}
+
+			return AssetDatabase.AssetPathToGUID(assetPath);
+		}
+
+
+		public static void Clear(UnityEngine.Object assetObject, string source = null)
+		{
+			Clear(GetGUID(assetObject), source);
+		}
+
+		public static void Clear(string guid, string source = null)
+		{
+			Message m;
+			if (!m_messageMap.TryGetValue(guid, out m))
+				return;
+
+			if (!string.IsNullOrEmpty(m.source) && m.source != source)
+			{
+				Debug.LogWarningFormat("[{0}]のメッセージは[{1}]じゃないと消せない",
+					Path.GetFileName(AssetDatabase.GUIDToAssetPath(guid)),
+					m.source);
+				return;
+			}
+
+			m_messageMap.Remove(guid);
+			Save();
+
+			if (m_listWindow)
+			{
+				m_listWindow.Init(m_messageMap);
 			}
 		}
 
-		public static void Write(string guid, string message, MessageType type)
+
+		/// <summary>
+		/// メッセージを設定。sourceを指定すると同じsourceからじゃないと消せない。
+		/// </summary>
+		public static void Set(UnityEngine.Object assetObject, string message, MessageType type, string source = null)
 		{
-			WriteInternal(guid, message, type, null);
+			Set(GetGUID(assetObject), message, type, source);
 		}
 
-		public static void Write(string guid, string message, MessageType type, MonoBehaviour behaviour)
-		{
-			WriteInternal(guid, message, type, MonoScript.FromMonoBehaviour(behaviour));
-		}
-
-		public static void Write(string guid, string message, MessageType type, ScriptableObject scriptableObject)
-		{
-			WriteInternal(guid, message, type, MonoScript.FromScriptableObject(scriptableObject));
-		}
-
-		static void WriteInternal(string guid, string message, MessageType type, MonoScript script)
+		/// <summary>
+		/// メッセージを設定。sourceを指定すると同じsourceからじゃないと消せない。
+		/// </summary>
+		public static void Set(string guid, string message, MessageType type, string source = null)
 		{
 			if (string.IsNullOrEmpty(guid)) return;
 
-			m_messageMap[guid] = new Message()
+			SetMessage(guid, new Message()
 			{
 				message = message,
 				type = type,
-				source = script,
-			};
+				source = source,
+			});
+		}
 
+		static void SetMessage(string guid, Message message)
+		{
+			Assert.IsFalse(string.IsNullOrEmpty(guid));
+			
+			m_messageMap[guid] = message;
 			Save();
+
+			if (m_listWindow)
+			{
+				m_listWindow.Init(m_messageMap);
+			}
+
+			EditorApplication.RepaintProjectWindow();
 		}
 
 
 		//------------------------------------------------------
-		// from menu
+		// menu item
+		//------------------------------------------------------
+
+		const string kListMenuPath = "Tools/AssetMessenger/全てのメッセージを表示";
+		const string kClearAllMenuPath = "Tools/AssetMessenger/全メッセージ削除";
+
+		[MenuItem(kListMenuPath)]
+		static void OpenList()
+		{
+			m_listWindow = AssetMessageList.Open(m_messageMap);
+		}
+
+		[MenuItem(kClearAllMenuPath)]
+		static void ClearAllOnMenu()
+		{
+			if (!EditorUtility.DisplayDialog("メッセージ全削除", "重要なメッセージも全て消えてしまいますが\n本当に削除しますか？", "実行"))
+				return;
+
+			m_messageMap.Clear();
+			Save();
+
+			if (m_listWindow)
+			{
+				m_listWindow.Init(m_messageMap);
+			}
+
+			EditorApplication.RepaintProjectWindow();
+		}
+
+
+		//------------------------------------------------------
+		// asset menu
 		//------------------------------------------------------
 
 		const string kClearMenuPath = "Assets/AssetMessenger/Clear";
 		const string kWriteMenuPath = "Assets/AssetMessenger/Write";
 
-		static string GetSelectGUID()
+		static string GetSelectionGUID()
 		{
-			var instanceId = Selection.activeInstanceID;
-			if (instanceId != 0)
-			{
-				var assetPath = AssetDatabase.GetAssetPath(Selection.activeInstanceID);
-				if (!string.IsNullOrEmpty(assetPath))
-				{
-					return AssetDatabase.AssetPathToGUID(assetPath);
-				}
-			}
-			return string.Empty;
+			return Selection.assetGUIDs.FirstOrDefault();
 		}
 
 		[MenuItem(kClearMenuPath, true, 300)]
-		static bool IsClearable()
+		static bool IsClearableOnMenu()
 		{
-			var guid = GetSelectGUID();
-			return !string.IsNullOrEmpty(guid) && m_messageMap.ContainsKey(guid);
+			var guid = GetSelectionGUID();
+			if (string.IsNullOrEmpty(guid)) return false;
+
+			Message m;
+			return m_messageMap.TryGetValue(guid, out m) && string.IsNullOrEmpty(m.source);
 		}
 
 		[MenuItem(kClearMenuPath, false, 300)]
-		static void Clear()
+		static void ClearOnMenu()
 		{
-			var guid = GetSelectGUID();
+			var guid = GetSelectionGUID();
 			Clear(guid);
 		}
 
 		[MenuItem(kWriteMenuPath, true, 301)]
-		static bool IsWritable()
+		static bool IsWritableOnMenu()
 		{
-			return !string.IsNullOrEmpty(GetSelectGUID());
+			var guid = GetSelectionGUID();
+			if (string.IsNullOrEmpty(guid)) return false;
+
+			// 消せないメッセージが既に設定されていたら上書きできない
+			Message m;
+			return !m_messageMap.TryGetValue(guid, out m) || string.IsNullOrEmpty(m.source);
 		}
 
 		[MenuItem(kWriteMenuPath, false, 301)]
-		static void Write()
+		static void WriteOnMenu()
 		{
-			var guid = GetSelectGUID();
-			WriteInternal(guid, "TEST", MessageType.Warning, null);
+			var guid = GetSelectionGUID();
+			AssetMessageWriter.Open(guid, SetMessage);
 		}
 
 
@@ -215,7 +298,7 @@ namespace AssetMessageService
 					if (itemPosition.Contains(e.mousePosition) && e.button == 0)
 					{
 						var win = EditorWindow.focusedWindow; // MouseDownが来てるってことはfocusedWindowはここ
-						AssetMessageBoard.Create(msg, e.mousePosition + win.position.position);
+						AssetMessageBoard.Open(guid, msg, e.mousePosition + win.position.position);
 						e.Use();
 					}
 					break;

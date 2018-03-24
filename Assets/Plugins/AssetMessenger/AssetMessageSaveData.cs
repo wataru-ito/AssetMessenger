@@ -19,7 +19,7 @@ namespace AssetMessageService
 			public string guid;
 			public string message;
 			public MessageType type;
-			public MonoScript script;
+			public string source;
 
 			public static MessageData Encode(KVP kvp)
 			{
@@ -28,7 +28,7 @@ namespace AssetMessageService
 					guid = kvp.Key,
 					message = kvp.Value.message,
 					type = kvp.Value.type,
-					script = kvp.Value.source,
+					source = kvp.Value.source,
 				};
 			}
 
@@ -38,7 +38,7 @@ namespace AssetMessageService
 				{
 					message = message,
 					type = type,
-					source = script,
+					source = source,
 				};
 			}
 		}
