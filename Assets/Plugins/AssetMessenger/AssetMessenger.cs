@@ -211,7 +211,7 @@ namespace AssetMessageService
 		[MenuItem(kClearAllMenuPath)]
 		static void ClearAllOnMenu()
 		{
-			if (!EditorUtility.DisplayDialog("メッセージ全削除", "重要なメッセージも全て消えてしまいますが\n本当に削除しますか？", "実行"))
+			if (!EditorUtility.DisplayDialog("メッセージ全削除", "重要なメッセージも全て消えてしまいますが\n本当に削除しますか？", "実行", "やめる"))
 				return;
 
 			m_dataMap.Clear();
