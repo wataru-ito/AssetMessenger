@@ -1,23 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Assertions;
 using UnityEditor;
 
 namespace AssetMessageService
 {
-	struct Message
-	{
-		public string message;
-		public MessageType type;
-		public string source;
-	}
-
 	public static class AssetMessenger
 	{
-		static Dictionary<string,Message> m_messageMap = new Dictionary<string, Message>();
+		static AssetMessageMap m_dataMap;
 		static Texture[] m_icons;
 
 		static bool m_editing;
@@ -40,12 +31,12 @@ namespace AssetMessageService
 			m_icons[(int)MessageType.Error] =  EditorGUIUtility.LoadRequired("console.erroricon") as Texture;
 
 			m_editing = false;
-			m_messageMap = AssetMessageSaveData.Load();
+			m_dataMap = AssetMessageMap.Load();
 
 			m_listWindow = Resources.FindObjectsOfTypeAll<AssetMessageList>().FirstOrDefault();
 			if (m_listWindow)
 			{
-				m_listWindow.Init(m_messageMap);
+				m_listWindow.Init(m_dataMap);
 			}
 
 			EditorApplication.projectWindowItemOnGUI += OnGUI;
@@ -98,7 +89,7 @@ namespace AssetMessageService
 				return;
 			}
 
-			AssetMessageSaveData.Save(m_messageMap);
+			m_dataMap.Save();
 		}
 
 
@@ -126,8 +117,8 @@ namespace AssetMessageService
 
 		public static void Clear(string guid, string source = null)
 		{
-			Message m;
-			if (!m_messageMap.TryGetValue(guid, out m))
+			AssetMessageData m;
+			if (!m_dataMap.TryGetValue(guid, out m))
 				return;
 
 			if (!string.IsNullOrEmpty(m.source) && m.source != source)
@@ -138,12 +129,12 @@ namespace AssetMessageService
 				return;
 			}
 
-			m_messageMap.Remove(guid);
+			m_dataMap.Remove(guid);
 			Save();
 
 			if (m_listWindow)
 			{
-				m_listWindow.Init(m_messageMap);
+				m_listWindow.Init(m_dataMap);
 			}
 		}
 
@@ -163,24 +154,23 @@ namespace AssetMessageService
 		{
 			if (string.IsNullOrEmpty(guid)) return;
 
-			SetMessage(guid, new Message()
+			SetMessage(new AssetMessageData()
 			{
+				guid = guid,
 				message = message,
 				type = type,
 				source = source,
 			});
 		}
 
-		static void SetMessage(string guid, Message message)
+		static void SetMessage(AssetMessageData message)
 		{
-			Assert.IsFalse(string.IsNullOrEmpty(guid));
-			
-			m_messageMap[guid] = message;
+			m_dataMap.Set(message);
 			Save();
 
 			if (m_listWindow)
 			{
-				m_listWindow.Init(m_messageMap);
+				m_listWindow.Init(m_dataMap);
 			}
 
 			EditorApplication.RepaintProjectWindow();
@@ -197,7 +187,7 @@ namespace AssetMessageService
 		[MenuItem(kListMenuPath)]
 		static void OpenList()
 		{
-			m_listWindow = AssetMessageList.Open(m_messageMap);
+			m_listWindow = AssetMessageList.Open(m_dataMap);
 		}
 
 		[MenuItem(kClearAllMenuPath)]
@@ -206,12 +196,12 @@ namespace AssetMessageService
 			if (!EditorUtility.DisplayDialog("メッセージ全削除", "重要なメッセージも全て消えてしまいますが\n本当に削除しますか？", "実行"))
 				return;
 
-			m_messageMap.Clear();
+			m_dataMap.Clear();
 			Save();
 
 			if (m_listWindow)
 			{
-				m_listWindow.Init(m_messageMap);
+				m_listWindow.Init(m_dataMap);
 			}
 
 			EditorApplication.RepaintProjectWindow();
@@ -236,8 +226,8 @@ namespace AssetMessageService
 			var guid = GetSelectionGUID();
 			if (string.IsNullOrEmpty(guid)) return false;
 
-			Message m;
-			return m_messageMap.TryGetValue(guid, out m) && string.IsNullOrEmpty(m.source);
+			AssetMessageData m;
+			return m_dataMap.TryGetValue(guid, out m) && string.IsNullOrEmpty(m.source);
 		}
 
 		[MenuItem(kClearMenuPath, false, 300)]
@@ -250,19 +240,18 @@ namespace AssetMessageService
 		[MenuItem(kWriteMenuPath, true, 301)]
 		static bool IsWritableOnMenu()
 		{
-			var guid = GetSelectionGUID();
-			if (string.IsNullOrEmpty(guid)) return false;
+			var guids = Selection.assetGUIDs;
+			if (guids.Length != 1) return false;
 
 			// 消せないメッセージが既に設定されていたら上書きできない
-			Message m;
-			return !m_messageMap.TryGetValue(guid, out m) || string.IsNullOrEmpty(m.source);
+			AssetMessageData m;
+			return !m_dataMap.TryGetValue(guids[0], out m) || string.IsNullOrEmpty(m.source);
 		}
 
 		[MenuItem(kWriteMenuPath, false, 301)]
 		static void WriteOnMenu()
 		{
-			var guid = GetSelectionGUID();
-			AssetMessageWriter.Open(guid, SetMessage);
+			AssetMessageWriter.Open(Selection.assetGUIDs[0], SetMessage);
 		}
 
 
@@ -272,8 +261,8 @@ namespace AssetMessageService
 
 		static void OnGUI(string guid, Rect selectionRect)
 		{
-			Message msg;
-			if (!m_messageMap.TryGetValue(guid, out msg)) return;
+			AssetMessageData msg;
+			if (!m_dataMap.TryGetValue(guid, out msg)) return;
 
 			bool twoColumnLayout = (selectionRect.width / selectionRect.height) < 1f;
 			var itemPosition = GetIconRect(selectionRect, twoColumnLayout);

@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using UnityEngine;
 using UnityEditor;
 
@@ -11,15 +10,13 @@ namespace AssetMessageService
 		{
 			public Object asset;
 			public string assetPath;
-			public string guid;
-			public Message message;
+			public AssetMessageData message;
 
-			public Data(KeyValuePair<string, Message> kvp)
+			public Data(AssetMessageData message)
 			{
-				guid = kvp.Key;
-				assetPath = AssetDatabase.GUIDToAssetPath(kvp.Key);
+				assetPath = AssetDatabase.GUIDToAssetPath(message.guid);
 				asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
-				message = kvp.Value;
+				this.message = message;
 			}
 		}
 
@@ -33,16 +30,16 @@ namespace AssetMessageService
 		// static function
 		//------------------------------------------------------
 
-		public static AssetMessageList Open(IEnumerable<KeyValuePair<string,Message>> messages)
+		public static AssetMessageList Open(AssetMessageMap data)
 		{
 			var win = GetWindow<AssetMessageList>();
-			win.Init(messages);
+			win.Init(data);
 			return win;
 		}
 
-		public void Init(IEnumerable<KeyValuePair<string, Message>> messages)
+		public void Init(AssetMessageMap data)
 		{
-			m_datas = messages.Select(i => new Data(i)).ToArray();
+			m_datas = data.Messages.Select(i => new Data(i)).ToArray();
 			System.Array.Sort(m_datas, (x, y) => x.assetPath.CompareTo(y.assetPath));
 
 			Repaint();
@@ -66,6 +63,14 @@ namespace AssetMessageService
 
 		void OnGUI()
 		{
+			// ウィンドウ表示したまま再起動するとこうなる
+			// > すぐにAssetMessenger.csから再設定されるので待つ
+			if (m_datas == null)
+			{
+				EditorGUILayout.HelpBox("AssetMessenger 初期化中...", MessageType.Info);
+				return;
+			}
+
 			m_scrollPosition = EditorGUILayout.BeginScrollView(m_scrollPosition);
 			System.Array.ForEach(m_datas, DrawData);
 			EditorGUILayout.EndScrollView();
@@ -99,7 +104,7 @@ namespace AssetMessageService
 				case EventType.MouseDown:
 					if (icon.Contains(e.mousePosition) && e.button == 0)
 					{
-						AssetMessageBoard.Open(data.guid, data.message, position.position + e.mousePosition);
+						AssetMessageBoard.Open(data.message.guid, data.message, position.position + e.mousePosition);
 						e.Use();
 					}
 					break;

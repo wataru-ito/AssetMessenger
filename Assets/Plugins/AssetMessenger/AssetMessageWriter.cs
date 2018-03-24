@@ -2,14 +2,13 @@
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEditor;
-using Callback = System.Action<string,AssetMessageService.Message>;
+using Callback = System.Action<AssetMessageService.AssetMessageData>;
 
 namespace AssetMessageService
 {
 	class AssetMessageWriter : EditorWindow
 	{
-		string m_guid;
-		Message m_message = new Message();
+		AssetMessageData m_message = new AssetMessageData();
 		Callback m_callback;
 
 
@@ -30,7 +29,7 @@ namespace AssetMessageService
 
 		void Init(string guid, Callback callback)
 		{
-			m_guid = guid;
+			m_message.guid = guid;
 			m_callback = callback;
 
 			titleContent = new GUIContent(Path.GetFileName(AssetDatabase.GUIDToAssetPath(guid)));
@@ -57,7 +56,7 @@ namespace AssetMessageService
 			GUI.enabled = !string.IsNullOrEmpty(m_message.message);
 			if (GUILayout.Button("設定"))
 			{
-				m_callback(m_guid, m_message);
+				m_callback(m_message);
 				Close();
 			}
 		}

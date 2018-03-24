@@ -6,13 +6,13 @@ namespace AssetMessageService
 {
 	class AssetMessageBoard : EditorWindow
 	{
-		Message m_message;
+		AssetMessageData m_message;
 
 		//------------------------------------------------------
 		// static function
 		//------------------------------------------------------
 
-		public static AssetMessageBoard Open(string guid, Message message, Vector2 displayPosition)
+		public static AssetMessageBoard Open(string guid, AssetMessageData message, Vector2 displayPosition)
 		{
 			var win = CreateInstance<AssetMessageBoard>();
 			win.Init(guid, message);
@@ -22,7 +22,7 @@ namespace AssetMessageService
 			return win;
 		}
 
-		void Init(string guid, Message message)
+		void Init(string guid, AssetMessageData message)
 		{
 			m_message = message;
 			titleContent = new GUIContent(Path.GetFileName(AssetDatabase.GUIDToAssetPath(guid)));
@@ -30,9 +30,12 @@ namespace AssetMessageService
 
 		void SetDisplayPosition(Vector2 displayPosition)
 		{
-			var w = 300f;
-			var h = 100f;
-			position = new Rect(displayPosition.x - w * 0.5f, displayPosition.y - h, w, h);
+			const float w = 300f; // あとで調整しよう
+			const float h = 100f;
+			var x = Mathf.Max(0, displayPosition.x - w * 0.5f);
+			var y = Mathf.Max(0, displayPosition.y - h);
+
+			position = new Rect(x, y, w, h);
 		}
 
 
