@@ -8,6 +8,16 @@ namespace AssetMessageService
 {
 	public static class AssetMessenger
 	{
+		class Postprocessor : AssetPostprocessor
+		{
+			static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
+			{
+				StartEditing();
+				Array.ForEach(deletedAssets, i => ClearForce(AssetDatabase.AssetPathToGUID(i)));
+				StopEditing();
+			}
+		}
+
 		static AssetMessageMap m_dataMap;
 		static Texture[] m_icons;
 
@@ -97,18 +107,16 @@ namespace AssetMessageService
 		// accessor
 		//------------------------------------------------------
 
-		static string GetGUID(UnityEngine.Object assetObject)
+		static void ClearForce(string guid)
 		{
-			var assetPath = AssetDatabase.GetAssetPath(assetObject);
-			if (string.IsNullOrEmpty(assetPath))
+			if (!m_dataMap.Remove(guid)) return;
+			Save();
+
+			if (m_listWindow)
 			{
-				Debug.LogWarning(assetObject.ToString() + "dont asset");
-				return null;
+				m_listWindow.Init(m_dataMap);
 			}
-
-			return AssetDatabase.AssetPathToGUID(assetPath);
 		}
-
 
 		public static void Clear(UnityEngine.Object assetObject, string source = null)
 		{
@@ -137,7 +145,6 @@ namespace AssetMessageService
 				m_listWindow.Init(m_dataMap);
 			}
 		}
-
 
 		/// <summary>
 		/// メッセージを設定。sourceを指定すると同じsourceからじゃないと消せない。
@@ -174,6 +181,18 @@ namespace AssetMessageService
 			}
 
 			EditorApplication.RepaintProjectWindow();
+		}
+
+		static string GetGUID(UnityEngine.Object assetObject)
+		{
+			var assetPath = AssetDatabase.GetAssetPath(assetObject);
+			if (string.IsNullOrEmpty(assetPath))
+			{
+				Debug.LogWarning(assetObject.ToString() + "dont asset");
+				return null;
+			}
+
+			return AssetDatabase.AssetPathToGUID(assetPath);
 		}
 
 
@@ -215,15 +234,10 @@ namespace AssetMessageService
 		const string kClearMenuPath = "Assets/AssetMessenger/Clear";
 		const string kWriteMenuPath = "Assets/AssetMessenger/Write";
 
-		static string GetSelectionGUID()
-		{
-			return Selection.assetGUIDs.FirstOrDefault();
-		}
-
 		[MenuItem(kClearMenuPath, true, 300)]
 		static bool IsClearableOnMenu()
 		{
-			var guid = GetSelectionGUID();
+			var guid = Selection.assetGUIDs.FirstOrDefault();
 			if (string.IsNullOrEmpty(guid)) return false;
 
 			AssetMessageData m;
@@ -233,7 +247,7 @@ namespace AssetMessageService
 		[MenuItem(kClearMenuPath, false, 300)]
 		static void ClearOnMenu()
 		{
-			var guid = GetSelectionGUID();
+			var guid = Selection.assetGUIDs.FirstOrDefault();
 			Clear(guid);
 		}
 
