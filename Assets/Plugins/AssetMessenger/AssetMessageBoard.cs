@@ -51,10 +51,29 @@ namespace AssetMessageService
 		void OnGUI()
 		{
 			EditorGUILayout.HelpBox(m_message.message, m_message.type, true);
+
+			GUILayout.FlexibleSpace();
 			if (!string.IsNullOrEmpty(m_message.source))
 			{
-				GUILayout.FlexibleSpace();
 				EditorGUILayout.LabelField("Posted by", m_message.source);
+			}
+			if (string.IsNullOrEmpty(m_message.source))
+			{
+				using (new EditorGUILayout.HorizontalScope())
+				{
+					if (GUILayout.Button("編集", "ButtonLeft"))
+					{
+						var win = AssetMessageWriter.Open(m_message);
+						var p = win.position;
+						p.center = position.center;
+						win.position = p;
+					}
+					if (GUILayout.Button("削除", "ButtonRight"))
+					{
+						AssetMessenger.Clear(m_message.guid);
+						Close();
+					}
+				}
 			}
 		}
 	}

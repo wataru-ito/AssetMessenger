@@ -100,6 +100,7 @@ namespace AssetMessageService
 			}
 
 			m_dataMap.Save();
+			EditorApplication.RepaintProjectWindow();
 		}
 
 
@@ -170,7 +171,7 @@ namespace AssetMessageService
 			});
 		}
 
-		static void SetMessage(AssetMessageData message)
+		internal static void SetMessage(AssetMessageData message)
 		{
 			m_dataMap.Set(message);
 			Save();
@@ -179,8 +180,6 @@ namespace AssetMessageService
 			{
 				m_listWindow.Init(m_dataMap);
 			}
-
-			EditorApplication.RepaintProjectWindow();
 		}
 
 		static string GetGUID(UnityEngine.Object assetObject)
@@ -222,8 +221,6 @@ namespace AssetMessageService
 			{
 				m_listWindow.Init(m_dataMap);
 			}
-
-			EditorApplication.RepaintProjectWindow();
 		}
 
 
@@ -265,7 +262,7 @@ namespace AssetMessageService
 		[MenuItem(kWriteMenuPath, false, 301)]
 		static void WriteOnMenu()
 		{
-			AssetMessageWriter.Open(Selection.assetGUIDs[0], SetMessage);
+			AssetMessageWriter.Open(Selection.assetGUIDs[0]);
 		}
 
 

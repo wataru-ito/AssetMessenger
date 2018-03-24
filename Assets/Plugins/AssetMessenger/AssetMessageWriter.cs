@@ -2,37 +2,42 @@
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEditor;
-using Callback = System.Action<AssetMessageService.AssetMessageData>;
 
 namespace AssetMessageService
 {
 	class AssetMessageWriter : EditorWindow
 	{
 		AssetMessageData m_message = new AssetMessageData();
-		Callback m_callback;
-
+		
 
 		//------------------------------------------------------
 		// static function
 		//------------------------------------------------------
 
-		public static AssetMessageWriter Open(string guid, Callback callback)
+		public static AssetMessageWriter Open(string guid)
 		{
 			Assert.IsFalse(string.IsNullOrEmpty(guid));
-			Assert.IsNotNull(callback);
 
 			var win = CreateInstance<AssetMessageWriter>();
-			win.Init(guid, callback);
-			win.ShowAuxWindow();
+			win.m_message.guid = guid;
+			win.Open();
 			return win;
 		}
 
-		void Init(string guid, Callback callback)
+		public static AssetMessageWriter Open(AssetMessageData data)
 		{
-			m_message.guid = guid;
-			m_callback = callback;
+			Assert.IsFalse(string.IsNullOrEmpty(data.guid));
 
-			titleContent = new GUIContent(Path.GetFileName(AssetDatabase.GUIDToAssetPath(guid)));
+			var win = CreateInstance<AssetMessageWriter>();
+			win.m_message = data;
+			win.Open();
+			return win;
+		}
+		
+		void Open()
+		{
+			titleContent = new GUIContent(Path.GetFileName(AssetDatabase.GUIDToAssetPath(m_message.guid)));
+			ShowAuxWindow();
 		}
 
 
@@ -56,7 +61,7 @@ namespace AssetMessageService
 			GUI.enabled = !string.IsNullOrEmpty(m_message.message);
 			if (GUILayout.Button("設定"))
 			{
-				m_callback(m_message);
+				AssetMessenger.SetMessage(m_message);
 				Close();
 			}
 		}
